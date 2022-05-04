@@ -1,0 +1,44 @@
+---
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.go"
+      run: golangci-lint run
+    markdownlint:
+      glob: "*.md"
+      run: npm run lint:markdownlint
+    yamllint:
+      glob: "*.{yml,yaml}"
+      run: |
+        if type -a yamllint >/dev/null 2>&1; then
+          yamllint -- {staged_files}
+        else
+          echo "yamllint is not found."
+        fi
+    actionlint:
+      root: ".github/workflows/"
+      glob: "*.{yml,yaml}"
+      run: actionlint
+    gitleaks:
+      run: |
+        if type -a gitleaks >/dev/null 2>&1; then
+          gitleaks detect -v
+        else
+          echo "gitleaks is not found."
+        fi
+    typos:
+      run: |
+        if type -a typos >/dev/null 2>&1; then
+          typos
+        else
+          echo "typos is not found."
+        fi
+
+setup:
+  parallel: false
+  commands:
+    aqua:
+      run: aqua install
+    migrate:
+      run: sqlx database create && sqlx migrate run
