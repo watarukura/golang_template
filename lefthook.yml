@@ -40,5 +40,16 @@ setup:
   commands:
     aqua:
       run: aqua install
+    tools:
+      run: |
+        if ! type -a yamllint >/dev/null 2>&1; then
+          brew install yamllint
+        fi
+        go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
     migrate:
-      run: sqlx database create && sqlx migrate run
+      run: migrate -database "$MYSQL_URL" -path "migrations" up
+#    openapi:
+#      run: |
+#        oapi-codegen -generate "server" -package openapi  openapi/openapi.yaml > openapi/server.gen.go
+#        oapi-codegen -generate "spec" -package openapi  openapi/openapi.yaml > openapi/spec.gen.go
+#        oapi-codegen -generate "types" -package openapi  openapi/openapi.yaml > openapi/types.gen.go
