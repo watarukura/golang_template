@@ -1,5 +1,4 @@
-DROP TABLE IF EXISTS petstore;
-CREATE TABLE petstore (
+CREATE TABLE IF NOT EXISTS petstore (
     id BIGINT PRIMARY KEY,
     name VARCHAR(255),
     tag JSON
