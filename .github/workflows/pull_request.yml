@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  DATABASE_URL: mysql://my-user:my-password@localhost:5432/my-database
+  MYSQL_URL: mysql://my-user:my-password@tcp(127.0.0.1:3306)/my-db
   APP_ENVIRONMENT: ci
 
 jobs:
@@ -55,28 +55,28 @@ jobs:
     needs:
       - cleanup
     services:
-      postgres:
+      mysql:
         image: mysql:8.0
         ports:
           - "3306:3306"
         env:
           MYSQL_USER: my-user
           MYSQL_PASSWORD: my-password
-          MYSQL_DB: my-database
+          MYSQL_DB: my-db
         options: >-
           --health-cmd="mysqladmin ping"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
-          -e MYSQL_USER=madras-test
-          -e MYSQL_PASSWORD=madras-test
-          -e MYSQL_DATABASE=madras-test
+          -e MYSQL_USER=my-user
+          -e MYSQL_PASSWORD=my-password
+          -e MYSQL_DATABASE=my-db
           -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
           --entrypoint sh mysql:8.0 -c "exec docker-entrypoint.sh mysqld --default-authentication-plugin=mysql_native_password"
-#      redis:
-#        image: redis:6
-#        ports:
-#          - "6379:6379"
+    #      redis:
+    #        image: redis:6
+    #        ports:
+    #          - "6379:6379"
     steps:
       - name: Setup code
         uses: actions/checkout@v2
@@ -99,41 +99,15 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: go mod download
 
-      - uses: baptiste0928/cargo-install@v1
-        name: Install sqlx-cli
-        with:
-          crate: sqlx-cli
-          version: ${{ env.SQLX_VERSION }}
-          features: ${{ env.SQLX_FEATURES }}
-          locked: true
+      - name: install migrate
+        run: |
+          go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.15.2
 
       - name: migrate db
-        run: |
-          sqlx database create
-          sqlx migrate run
+        run: migrate -database "$MYSQL_URL" -path "migrations" up
 
       - name: Run test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-      - uses: baptiste0928/cargo-install@v1
-        name: Install sqlx-cli
-        with:
-          crate: sqlx-cli
-          version: ${{ env.SQLX_VERSION }}
-          features: ${{ env.SQLX_FEATURES }}
-          locked: true
-
-      - name: migrate db
-        run: |
-          sqlx database create
-          sqlx migrate run
-
-      - name: Run test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: go test
 
   typo:
     runs-on: ubuntu-latest
@@ -145,42 +119,6 @@ jobs:
 
       - name: Run typos
         uses: crate-ci/typos@v1.4.1
-
-  tomlformat:
-    runs-on: ubuntu-latest
-    needs:
-      - cleanup
-    steps:
-      - name: Setup code
-        uses: actions/checkout@v2
-
-      - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      # https://github.com/actions/cache/blob/master/examples.md#rust---cargo
-      - name: Cache cargo files
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: delete mold for CI
-        run: |
-          rm -f .cargo/config.toml
-
-      - name: Check Cargo.toml format
-        run: |
-          cargo install cargo-tomlfmt
-          cargo tomlfmt --dryrun
 
   superlinter:
     runs-on: ubuntu-latest
