@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  MYSQL_URL: mysql://my-user:my-password@localhost:3306/my-db
+  MYSQL_URL: mysql://my-user:my-password@tcp(127.0.0.1:3306)/my-db
   APP_ENVIRONMENT: ci
 
 jobs:
@@ -55,14 +55,14 @@ jobs:
     needs:
       - cleanup
     services:
-      postgres:
+      mysql:
         image: mysql:8.0
         ports:
           - "3306:3306"
         env:
           MYSQL_USER: my-user
           MYSQL_PASSWORD: my-password
-          MYSQL_DB: my-database
+          MYSQL_DB: my-db
         options: >-
           --health-cmd="mysqladmin ping"
           --health-interval=10s
